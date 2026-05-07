@@ -1,0 +1,27 @@
+{{ ImportLine }}
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import type { ZodString } from "zod";
+
+export const {{ Table }} = pgTable("{{ Table }}", {
+	id: uuid().primaryKey().defaultRandom(),
+{{ Fields }}	createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+	updatedAt: timestamp({ withTimezone: true })
+		.defaultNow()
+		.$onUpdate(() => new Date()),
+});
+
+export const select{{ Capitalized }}Schema = createSelectSchema({{ Table }});
+{% if has_varchar %}
+export const insert{{ Capitalized }}Schema = createInsertSchema({{ Table }}, {
+{% for f in FieldsSlice %}
+{% if f.type == "varchar" %}
+		{{ f.name }}: (schema: ZodString) => schema.min(1).max({{ f.length }}),
+{% endif %}
+{% endfor %}
+}).omit({ id: true, createdAt: true, updatedAt: true });
+{% else %}
+
+export const insert{{ Capitalized }}Schema = createInsertSchema({{ Table }}).omit({ id: true, createdAt: true, updatedAt: true });
+{% endif %}
+
+export const patch{{ Capitalized }}Schema = insert{{ Capitalized }}Schema.partial();

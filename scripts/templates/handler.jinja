@@ -1,0 +1,74 @@
+import { eq } from "drizzle-orm";
+import * as HttpStatusCode from "stoker/http-status-codes";
+import * as HttpStatusPhrases from "stoker/http-status-phrases";
+import db from "@/db";
+import { {{ Table }} } from "@/db/schemas/{{ Table }}";
+import type { AppRouteHandler } from "@/lib/types";
+import type {
+	CreateRoute,
+	FetchRoute,
+	ListRoute,
+	PatchRoute,
+	RemoveRoute,
+} from "./{{ Table }}.routes";
+
+export const list: AppRouteHandler<ListRoute> = async (c) => {
+	const items = await db.query.{{ Table }}.findMany();
+	return c.json(items);
+};
+
+export const create: AppRouteHandler<CreateRoute> = async (c) => {
+	const item = c.req.valid("json");
+	const [insertedItem] = await db.insert({{ Table }}).values(item).returning();
+	return c.json(insertedItem, HttpStatusCode.CREATED);
+};
+
+export const fetch: AppRouteHandler<FetchRoute> = async (c) => {
+	const { id } = c.req.valid("param");
+	const item = await db.query.{{ Table }}.findFirst({
+		where: (fields, operators) => operators.eq(fields.id, id),
+	});
+	if (!item) {
+		return c.json(
+			{ message: HttpStatusPhrases.NOT_FOUND },
+			HttpStatusCode.NOT_FOUND,
+		);
+	}
+	return c.json(item, HttpStatusCode.OK);
+};
+
+export const patch: AppRouteHandler<PatchRoute> = async (c) => {
+	const { id } = c.req.valid("param");
+	const itemUpdate = c.req.valid("json");
+
+	const [updatedItem] = await db
+		.update({{ Table }})
+		.set(itemUpdate)
+		.where(eq({{ Table }}.id, id))
+		.returning();
+
+	if (!updatedItem) {
+		return c.json(
+			{ message: HttpStatusPhrases.NOT_FOUND },
+			HttpStatusCode.NOT_FOUND,
+		);
+	}
+	return c.json(updatedItem, HttpStatusCode.OK);
+};
+
+export const remove: AppRouteHandler<RemoveRoute> = async (c) => {
+	const { id } = c.req.valid("param");
+	const deleteResult = await db
+		.delete({{ Table }})
+		.where(eq({{ Table }}.id, id))
+		.returning();
+
+	if (deleteResult.length === 0) {
+		return c.json(
+			{ message: HttpStatusPhrases.NOT_FOUND },
+			HttpStatusCode.NOT_FOUND,
+		);
+	}
+
+	return c.body(null, HttpStatusCode.NO_CONTENT);
+};

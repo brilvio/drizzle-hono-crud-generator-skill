@@ -1,0 +1,101 @@
+import { createRoute, z } from "@hono/zod-openapi";
+import * as HttpStatusCode from "stoker/http-status-codes";
+import {
+    jsonContent,
+    jsonContentOneOf,
+    jsonContentRequired,
+} from "stoker/openapi/helpers";
+import { createErrorSchema } from "stoker/openapi/schemas";
+import {
+    insert{{ Capitalized }}Schema,
+    patch{{ Capitalized }}Schema,
+    select{{ Capitalized }}Schema,
+} from "@/db/schemas/{{ Table }}";
+import { notFoundSchema } from "@/lib/consts";
+import { IdParamsSchema } from "@/lib/types";
+
+const tags = ["{{ Capitalized }}"];
+
+export const list = createRoute({
+    path: "/{{ Table }}",
+    method: "get",
+    tags,
+    responses: {
+        [HttpStatusCode.OK]: jsonContent(
+            z.array(select{{ Capitalized }}Schema),
+            "List of {{ Capitalized }}",
+        ),
+    },
+});
+
+export const create = createRoute({
+    path: "/{{ Table }}",
+    method: "post",
+    tags,
+    request: { body: jsonContentRequired(insert{{ Capitalized }}Schema, "{{ Capitalized }} to create") },
+    responses: {
+        [HttpStatusCode.CREATED]: jsonContent(select{{ Capitalized }}Schema, "Created {{ Capitalized }}"),
+        [HttpStatusCode.UNPROCESSABLE_ENTITY]: jsonContent(
+            createErrorSchema(insert{{ Capitalized }}Schema),
+            "Validation Error",
+        ),
+    },
+});
+
+export const fetch = createRoute({
+    path: "/{{ Table }}/{id}",
+    request: {
+        params: IdParamsSchema,
+    },
+    method: "get",
+    tags,
+    responses: {
+        [HttpStatusCode.OK]: jsonContent(select{{ Capitalized }}Schema, "{{ Capitalized }} fetched by ID"),
+        [HttpStatusCode.UNPROCESSABLE_ENTITY]: jsonContent(
+            createErrorSchema(IdParamsSchema),
+            "Invalid Id Error",
+        ),
+        [HttpStatusCode.NOT_FOUND]: jsonContent(notFoundSchema, "{{ Capitalized }} Not Found"),
+    },
+});
+
+export const patch = createRoute({
+    path: "/{{ Table }}/{id}",
+    method: "patch",
+    tags,
+    request: {
+        body: jsonContentRequired(patch{{ Capitalized }}Schema, "{{ Capitalized }} to update"),
+        params: IdParamsSchema,
+    },
+    responses: {
+        [HttpStatusCode.OK]: jsonContent(select{{ Capitalized }}Schema, "Updated {{ Capitalized }}"),
+        [HttpStatusCode.UNPROCESSABLE_ENTITY]: jsonContentOneOf(
+            [createErrorSchema(patch{{ Capitalized }}Schema), createErrorSchema(IdParamsSchema)],
+            "Invalid Id Params or Invalid Body",
+        ),
+        [HttpStatusCode.NOT_FOUND]: jsonContent(notFoundSchema, "{{ Capitalized }} Not Found"),
+    },
+});
+
+export const remove = createRoute({
+    path: "/{{ Table }}/{id}",
+    method: "delete",
+    tags,
+    request: {
+        params: IdParamsSchema,
+    },
+    responses: {
+        [HttpStatusCode.NO_CONTENT]: { description: "{{ Capitalized }} deleted successfully" },
+        [HttpStatusCode.UNPROCESSABLE_ENTITY]: jsonContent(
+            createErrorSchema(IdParamsSchema),
+            "Invalid ID",
+        ),
+        [HttpStatusCode.NOT_FOUND]: jsonContent(notFoundSchema, "{{ Capitalized }} Not Found"),
+    },
+});
+
+export type ListRoute = typeof list;
+export type CreateRoute = typeof create;
+export type FetchRoute = typeof fetch;
+export type PatchRoute = typeof patch;
+export type RemoveRoute = typeof remove;
